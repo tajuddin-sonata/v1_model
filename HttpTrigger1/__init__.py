@@ -27,7 +27,7 @@ from util_input_validation import schema, Config
 from util_helpers import handle_bad_request, handle_exception
 
 # Env Vars
-# service = environ.get("K_SERVICE")  #did not need this line
+# service = environ.get("K_SERVICE") 
 # service = os.environ.get("FUNCTIONS_WORKER_RUNTIME")  
 
 # Instance-wide storage Vars
@@ -35,9 +35,6 @@ instance_id = str(uuid1())
 run_counter = 0
 connection_string = os.environ['StorageAccountConnectionString']
 storage_client = BlobServiceClient.from_connection_string(connection_string)
-
-# Initialize BlobServiceClient using Managed Identity
-# storage_client = BlobServiceClient(credential=DefaultAzureCredential())
 
 time_cold_start = time() - start_time
 

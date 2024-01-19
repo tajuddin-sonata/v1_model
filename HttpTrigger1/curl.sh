@@ -6,13 +6,13 @@
 
 # Replace with your Azure Function App URL
 ###"https://<function-app-name>.azurewebsites.net/api/<function-key>"
-function_url="https://<function-app-name>.azurewebsites.net/api/<function-key>"
+function_url="https://v1-wf-configure-function.azurewebsites.net/api/HttpTrigger1?code=GSRXqnlutFJBAHshh8oG45r9o5w1r4u-3-5wP96BeHknAzFuCfcImw=="
 
 # Replace with your Azure Function App key or any other authentication mechanism
-api_key="<function-key>"  ###"Function-key"
+api_key="GSRXqnlutFJBAHshh8oG45r9o5w1r4u-3-5wP96BeHknAzFuCfcImw=="  ###"Function-key"
 set -x
 
-curl -m 59 -X POST "$function_url" -H "x-functions-key: $api_key" -H "Content-Type: application/json" -d '{"context": {"azure_subscription": "dev-sub","azure_location": "east us","client_id": "customer1"},"input_files": {"source_file": {"bucket_name": "247ai-stg-cca-customer1-audio-landing","full_path": "1685951506932890_Daniel_and_Gus_1.wav","version": "0x8DC10DFBCC614FA","uploaded": "2024-01-09T12:23:51Z"}},"function_config": {"label_tags": {"client": "ci_client","step": "ci_step","type": "ci_media_type"},"functions": {"deepgram": ["deepgram"]},"config_bucket_name": "247ai-stg-cca"}}'
+curl -m 59 -X POST "$function_url" -H "x-functions-key: $api_key" -H "Content-Type: application/json" -d '{"context": {"azure_subscription": "dev-sub","azure_location": "east us","client_id": "customer1","execution_id": "id-1234","execution_start": "2024-01-19T03:52:20Z"},"input_files": {"source_file": {"bucket_name": "247ai-stg-cca-customer1-audio-landing","full_path": "test.wav","version": "0x8DC18A209B13338","uploaded": "2024-01-19T09:22:20Z"}},"function_config": {"label_tags": {"client": "ci_client","step": "ci_step","type": "ci_media_type"},"functions": {"deepgram": ["deepgram"],"process-audio": ["process-audio"],"process-metadata": ["process-metadata"],"process-transcript": ["process-transcript"],"process-video": ["process-video"],"redact-audio": ["redact-audio"]},"config_bucket_name": "247ai-stg-cca"}}'
 
 #####################################
 #################### OR #############
@@ -20,10 +20,10 @@ curl -m 59 -X POST "$function_url" -H "x-functions-key: $api_key" -H "Content-Ty
 
 # Replace with your Azure Function App URL
 ###"https://<function-app-name>.azurewebsites.net/api/<function-key>"
-function_url="https://<function-app-name>.azurewebsites.net/api/<function-key>"
+function_url="https://v1-wf-configure-function.azurewebsites.net/api/HttpTrigger1?code=GSRXqnlutFJBAHshh8oG45r9o5w1r4u-3-5wP96BeHknAzFuCfcImw=="
 
 # Replace with your Azure Function App key or any other authentication mechanism
-api_key="<function-key>"  ###"your-api-key"
+api_key="GSRXqnlutFJBAHshh8oG45r9o5w1r4u-3-5wP96BeHknAzFuCfcImw=="  ###"Function-key"
 set -x
 
 curl -m 59 -X POST "$function_url" \
@@ -33,14 +33,16 @@ curl -m 59 -X POST "$function_url" \
     "context": {
         "azure_subscription": "dev-sub",
         "azure_location": "east us",
-        "client_id": "customer1"
+        "client_id": "customer1",
+        "execution_id": "id-1234",
+        "execution_start": "2024-01-19T03:52:20Z"
     },
     "input_files": {
         "source_file": {
             "bucket_name": "247ai-stg-cca-customer1-audio-landing",
-            "full_path": "1685951506932890_Daniel_and_Gus_1.wav",
-            "version": "0x8DC10DFBCC614FA",
-            "uploaded": "2024-01-09T12:23:51Z"
+            "full_path": "test.wav",
+            "version": "0x8DC18A209B13338",
+            "uploaded": "2024-01-19T09:22:20Z"
         }
     },
     "function_config": {
@@ -50,7 +52,12 @@ curl -m 59 -X POST "$function_url" \
             "type": "ci_media_type"
         },
         "functions": {
-            "deepgram": ["deepgram"]
+            "deepgram": ["deepgram"],
+            "process-audio": ["process-audio"],
+            "process-metadata": ["process-metadata"],
+            "process-transcript": ["process-transcript"],
+            "process-video": ["process-video"],
+            "redact-audio": ["redact-audio"]
         },
         "config_bucket_name": "247ai-stg-cca"
     }

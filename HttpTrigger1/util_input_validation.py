@@ -123,7 +123,7 @@ class Config(Jsonable):
                 self.bucket_name = str(c["bucket_name"])
                 self.full_path = str(c["full_path"])
                 # self.version = int(c["version"])
-                self.version = c["version"]  ########## removed int
+                self.version = str(c["version"])  ########## string
                 self.size = int(c["size"]) if "size" in c else None
                 self.content_type = str(c["content_type"]) if "content_type" in c else None
                 self.uploaded=parse_datetime(str(c["uploaded"])) if "uploaded" in c else None

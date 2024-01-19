@@ -10,31 +10,31 @@ from traceback import format_exc
 # from google.cloud import storage
 from util_input_validation import Config
 
+#Libraries for Azure
+import os
+import time
 from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient, ContainerClient, BlobClient
+from azure.storage.blob import BlobServiceClient, BlobClient
 
-def impersonate_account(signing_account: str, lifetime: int):
-    credentials, project = default()
-    return impersonated_credentials.Credentials(
-        source_credentials=credentials,
-        target_principal=signing_account,
-        target_scopes="https://www.googleapis.com/auth/devstorage.read_write",
-        lifetime=lifetime,
-    )
-    
-# def impersonate_account(tenant_id, client_id, client_secret):
-#     # Authenticate using service principal credentials
-#     credential = DefaultAzureCredential(
-#         tenant_id=tenant_id,
-#         client_id=client_id,
-#         client_secret=client_secret
+
+# def impersonate_account(signing_account: str, lifetime: int):
+#     credentials, project = default()
+#     return impersonated_credentials.Credentials(
+#         source_credentials=credentials,
+#         target_principal=signing_account,
+#         target_scopes="https://www.googleapis.com/auth/devstorage.read_write",
+#         lifetime=lifetime,
 #     )
-#     return credential
 
-# def create_blob_service_client(account_url, credential):
-#     # Create a BlobServiceClient
-#     blob_service_client = BlobServiceClient(account_url=account_url, credential=credential)
-#     return blob_service_client
+def impersonate_account(signing_account: str, target_scopes, lifetime):
+    credential = DefaultAzureCredential()
+    token_credential = credential.get_token(target_scopes)
+    impersonated_credential={
+        "token": token_credential.token,
+        "expires_on_utc": token_credential.expires_on,
+        "expires_in_seconds": token_credential.expires_on.timestamp() - time.time()
+    }
+    return impersonated_credential
 
 
 def create_outgoing_file_ref(file: Union[BlobClient, Config.InputFiles.InputFile]):

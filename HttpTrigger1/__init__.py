@@ -170,7 +170,7 @@ def do_metrics(CONFIG: Config, transcript) -> dict:
     return upload_json("metrics", metrics, CONFIG)
 
 
-def do_spellcheck(CONFIG: Config, transcript: dict) -> tuple[dict, dict]:
+def do_spellcheck(CONFIG: Config, transcript: dict) -> Tuple[dict, dict]:
     spellcheck_config = CONFIG.function_config.spellcheck_config
     spellchecked_transcript, spellcheck_time_taken = spellcheck(
         transcript, spellcheck_config

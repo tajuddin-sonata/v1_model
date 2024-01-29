@@ -17,7 +17,6 @@ import tempfile
 import requests
 import json
 import io
-import tempfile
 
 # Azure Function Imports
 import os
@@ -27,10 +26,9 @@ import azure.functions as func
 from azure.storage.blob import BlobServiceClient, BlobSasPermissions, generate_blob_sas
 from azure.functions import HttpRequest, HttpResponse
 from azure.core.exceptions import ResourceNotFoundError
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 
 
-# sys.path.append(os.path.dirname(__file__))
-# script_directory = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
 from util_input_validation import schema, Config
@@ -65,7 +63,7 @@ compressed_audio_extension_type = ".mka"
 
 # @functions_framework.http
 def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
+    logging.info('HTTP trigger function processed a request.')
 
     ## context.function_directory returns the current directory in which functions is executed 
     waveform_liberary_path = os.path.join(context.function_directory, AUDIO_WAVEFORM_PATH)
@@ -115,16 +113,16 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     )
    
     try:
-        # Try to fetch blob properties with the condition that the ETag must match the desired_etag
+        ## Try to fetch blob properties with the condition that the ETag must match the desired_etag
         etag_value = media_blob.get_blob_properties(if_match=CONFIG.input_files.media.version)
         logging.info(f'Media Blob Name: {media_blob.blob_name}')
-        logging.info(f'Blob ETag: {etag_value["etag"]}')
+        logging.info(f'Media Blob ETag: {etag_value["etag"]}')
 
     except ResourceNotFoundError:
-        # Handle the case where the blob with the specified ETag is not found
+        ## Handle the case where the blob with the specified ETag is not found
         abort(404, "Media file not found on bucket")
 
-    # If blob exists, Generate Shared Access Signature (SAS) Token
+    ## If blob exists, Generate Shared Access Signature (SAS) Token
     sas_token = generate_blob_sas(
                 account_name=storage_client.account_name,
                 account_key=storage_client.credential.account_key,
@@ -134,14 +132,14 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
                 expiry=datetime.utcnow() + timedelta(minutes=30),
             )
 
-    # Logging individual components of SAS token generation
+    ## Logging individual components of SAS token generation
     logging.info(f"Account Name: {storage_client.account_name}")
     logging.info(f"Container Name: {CONFIG.input_files.media.bucket_name}")
     logging.info(f"Blob Path: {CONFIG.input_files.media.full_path}")
     logging.info(f"Permission: {BlobSasPermissions(read=True)}")
     logging.info(f"Expiry: {datetime.utcnow() + timedelta(minutes=30)}")
     
-    # Log SAS token and request details
+    ## Log SAS token and request details
     logging.info(f"SAS Token: {sas_token}")
     logging.info(f"Request Headers: {dict(req.headers)}")
 
@@ -151,9 +149,10 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     blob_filename = blob_url.split("/")[-1]
     logging.info(f'Blob filename: {blob_filename}')
     
-    # Combine the blob URL with the SAS token to get the signed URL
+    ## Combine the blob URL with the SAS token to get the signed URL
     staged_media_signed_url = f"{blob_url}?{sas_token}"
-    # Logging the staged_media_signed_url
+
+    ## Logging the staged_media_signed_url
     logging.info(f"Staged Media Signed URL: {staged_media_signed_url}")
 
 
@@ -163,23 +162,23 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
 
     ##### check and Installing ffmpeg package #######
     try:
-        # Check if FFmpeg is already installed
+        ## Check if FFmpeg is already installed
         check_ffmpeg_installed = "ffmpeg -version"
         subprocess.run(check_ffmpeg_installed, shell=True, check=True)
         logging.info("FFmpeg is already installed.")
     except subprocess.CalledProcessError:
-        # If FFmpeg is not installed, attempt to install it
+        ## If FFmpeg is not installed, attempt to install it
         install_command = "apt-get install -y ffmpeg || yum install -y ffmpeg"
         try:
             subprocess.run(install_command, shell=True, check=True)
             logging.info("FFmpeg installed successfully.")
         except subprocess.CalledProcessError as e:
-            # Log the exception details
+            ## Log the exception details
             logging.exception("Error installing FFmpeg: %s", e)
 
     #############  PROBE remote file for audio information ####################
     try:
-        # Run ffmpeg.probe with the URL
+        ## Run ffmpeg.probe with the URL
         probe = ffmpeg.probe(staged_media_signed_url)
         media_info["file_format"] = probe["format"]["format_name"]
         media_info["video_streams"] = len(
@@ -194,7 +193,7 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         ):
             media_info["audio_channels"] = audio_stream["channels"]
 
-        # Add success message
+        ## Add success message
         logging.info("Probe successful! Media information: %s", media_info)
     except ffmpeg._run.Error as e:
         logging.error(dumps({"ffprobe_error": str(e.stderr, "utf-8")}, indent=2))
@@ -207,7 +206,7 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     #####################################################
     if media_info["audio_streams"] == 0 or media_info["audio_channels"] == 0:
         with TemporaryDirectory() as tmpdir:
-            # Add empty audio tracks to the file
+            ## Add empty audio tracks to the file
             local_media_path = (
                 Path(tmpdir, "local_media")
                 .with_suffix(Path(CONFIG.input_files.media.full_path).suffix)
@@ -225,7 +224,7 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
                 logging.error(dumps({"ffprobe_error": str(e.stderr, "utf-8")}, indent=2))
                 abort(500, "injecting blank audio into video transcoding failed")
 
-            # Upload the new file, replacing the existing one on the Staging Bucket
+            ## Upload the new file, replacing the existing one on the Staging Bucket
             staging_video_with_added_blank_audio_path = (
             Path(
                 str(CONFIG.staging_config.folder_path),
@@ -239,12 +238,12 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
                 CONFIG.staging_config.bucket_name
             ).get_blob_client(staging_video_with_added_blank_audio_path)
 
-            # video_with_added_blank_audio_blob.upload_from_filename(local_media_path, timeout=300)
+            ## video_with_added_blank_audio_blob.upload_from_filename(local_media_path, timeout=300)
             
             with open(local_media_path, "rb") as f:
                 video_with_added_blank_audio_blob.upload_blob(f, timeout=300)
 
-        # Check that a new generation of the media_blob exists now
+        ## Check that a new generation of the media_blob exists now
         if video_with_added_blank_audio_blob.get_blob_properties().etag == CONFIG.input_files.media.version:
             logging.warning(
                 "media file was not overwritten properly with new empty audio version"
@@ -252,17 +251,18 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
         else:
             out_files["video_with_added_blank_audio"] = create_outgoing_file_ref(video_with_added_blank_audio_blob)
         
-        # Swap out the staged media URL with a new one
-        sas_token = video_with_added_blank_audio_blob.generate_blob_sas(
+        ## Swap out the staged media URL with a new one
+        sas_token = generate_blob_sas(
                 account_name=storage_client.account_name,
                 account_key=storage_client.credential.account_key,
-                # container_name=CONFIG.input_files.media.bucket_name,
-                # blob_name=CONFIG.input_files.media.full_path,
+                container_name=CONFIG.staging_config.bucket_name,
+                blob_name=staging_video_with_added_blank_audio_path,
                 permission=BlobSasPermissions(read=True),
                 expiry=datetime.utcnow() + timedelta(minutes=30),
             )
         staged_media_signed_url = f"{video_with_added_blank_audio_blob.url}?{sas_token}"
-        # Logging the staged_media_signed_url
+        
+        ## Logging the staged_media_signed_url
         logging.info(f"Staged Media Signed URL: {staged_media_signed_url}")
 
     #####################################################
@@ -371,7 +371,7 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     out_files["waveform"] = create_outgoing_file_ref(waveform_file_blob)
 
     #####################################################
-    # Compress Audio to MKA
+    ## Compress Audio to MKA
     #####################################################
     with TemporaryDirectory() as tmpdir:
         local_compressed_audio_path = (

@@ -23,8 +23,8 @@ from azure.storage.blob import BlobServiceClient, BlobSasPermissions, generate_b
 from azure.functions import HttpRequest, HttpResponse
 import azure.functions as func
 from azure.core.exceptions import ResourceNotFoundError
-
-
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+from werkzeug.exceptions import InternalServerError, BadRequest, NotFound
 
 
 ### GLOBAL Vars
@@ -112,15 +112,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         ### Try to fetch blob properties with the condition that the ETag must match the desired_etag
         etag_value = audio_blob.get_blob_properties(if_match=CONFIG.input_files.audio.version)
         logging.info(f'Audio Blob Name: {audio_blob.blob_name}')
-        logging.info(f'Blob ETag: {etag_value["etag"]}')
+        logging.info(f'Audio Blob ETag: {etag_value["etag"]}')
 
     except ResourceNotFoundError:
         # Handle the case where the blob with the specified ETag is not found
         abort(404, "Media file not found on bucket")
-
-    # # If trigger file does not exist
-    # if (not audio_blob) or (not audio_blob.exists()):
-    #     abort(404, 'audio file not found on bucket')
 
     sas_token = generate_blob_sas(
                 account_name=storage_client.account_name,
@@ -136,17 +132,10 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     ### Combine the blob URL with the SAS token to get the signed URL
     target_media_signed_url = f"{audio_blob_url}?{sas_token}"
+
     ### Logging the staged_media_signed_url
     logging.info(f"Target Media Signed URL: {target_media_signed_url}")
     
-    # # Generate Signed URL for File
-    # target_media_signed_url = audio_blob.generate_signed_url(
-    #     version="v4",
-    #     expiration=(timedelta(minutes=30)),
-    #     generation=audio_blob.generation,
-    #     credentials=impersonate_account(CONFIG.function_config.signing_account, 3600),
-    # )
-
     # Set up DG opts
     dg_opts={"api_key":""}
     if CONFIG.function_config.asr_config.url!=None:

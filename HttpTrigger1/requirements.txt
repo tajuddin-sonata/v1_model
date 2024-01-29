@@ -7,8 +7,6 @@ azure-functions
 azure-storage-blob
 azure-identity
 functions-framework==3.*
-# google-cloud-storage
-# google-cloud-logging
 flask-expects-json
 ciso8601
 # deepgram-sdk

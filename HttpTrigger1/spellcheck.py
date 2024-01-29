@@ -22,7 +22,6 @@ spell=None
 # add_words_loc = 'spellchecker/add_words.json'
 # remove_words_loc = 'spellchecker/remove_words.json'
 
-# remove_words_loc = os.path.join(os.path.dirname(__file__), 'remove_words.json')
 remove_words_loc = os.path.join(os.path.dirname(__file__), 'spellchecker', 'remove_words.json')
 
 # VARIABLES for cleaning text: ========================

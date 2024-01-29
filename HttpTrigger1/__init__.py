@@ -39,6 +39,8 @@ import azure.functions as func
 from azure.storage.blob import BlobServiceClient, BlobSasPermissions, generate_blob_sas
 from azure.functions import HttpRequest, HttpResponse
 from azure.core.exceptions import ResourceNotFoundError
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+from werkzeug.exceptions import InternalServerError, BadRequest, NotFound
 
 ### GLOBAL Vars
 
@@ -101,19 +103,12 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
     try:
         # Try to fetch blob properties with the condition that the ETag must match the desired_etag
         etag_value = transcript_blob.get_blob_properties(if_match=CONFIG.input_files.transcript.version)
-        logging.info(f'Media Blob Name: {transcript_blob.blob_name}')
-        logging.info(f'Blob ETag: {etag_value["etag"]}')
+        logging.info(f'Transcript Blob Name: {transcript_blob.blob_name}')
+        logging.info(f'Transcript Blob ETag: {etag_value["etag"]}')
 
     except ResourceNotFoundError:
         # Handle the case where the blob with the specified ETag is not found
         abort(404, "transcript file not found in bucket")
-
-    # # If trigger file does not exist
-    # if (not transcript_blob) or (not transcript_blob.exists()):
-    #     abort(404, "transcript file not found in bucket")
-
-    # Download Transcript to json
-    # transcript = loads(transcript_blob.download_as_string())
 
     # Download the blob as a string    
     transcript_content = transcript_blob.download_blob().readall()
@@ -133,25 +128,10 @@ def main(req: func.HttpRequest, context: func.Context) -> func.HttpResponse:
 
     if not ("metadata" in transcript and "media" in transcript["metadata"]
         and transcript["metadata"]["media"]["media_type"]=="voice"):
-        # Log metadata for debugging 
-        logging.info("Transcript metadata found: %s", transcript.get("metadata"))
-        logging.warning("Transcript represents voice media_type. Skipping spellcheck as Spellcheck condition not met.")
         ## Do spellcheck if spellcheck condition is met
         transcript, out_files["spellchecked_transcript"] = do_spellcheck(
             CONFIG, transcript
         )
-
-    
-    # if not ("metadata" in transcript and "media" in transcript["metadata"]
-    # and transcript["metadata"]["media"]["media_type"]=="voice"):
-    #     logging.warning("Transcript does not represent voice media. Skipping spellcheck.")
-
-    # else:
-    #     # Log metadata for debugging when it is found
-    #     logging.info("Transcript metadata found: %s", transcript.get("metadata"))
-    #     transcript, out_files["spellchecked_transcript"] = do_spellcheck(
-    #         CONFIG, transcript
-    # )
 
     #####################################################
     # NLP
@@ -179,29 +159,7 @@ def do_spellcheck(CONFIG: Config, transcript: dict) -> Tuple[dict, dict]:
         spellchecked_transcript,
         upload_json("spellchecked_transcript", spellchecked_transcript, CONFIG),
     )
- 
-# def do_spellcheck(CONFIG: Config, transcript: dict) -> Tuple[dict, dict]:
-#     spellcheck_config = CONFIG.function_config.spellcheck_config
-#     logging.info("Starting spellcheck process...")
-    
-#     try:
-#         spellchecked_transcript, spellcheck_time_taken = spellcheck(
-#             transcript, spellcheck_config
-#         )
-#         logging.info("Spellcheck process completed.")
-#         logging.info(f"Spellchecked Transcript: {spellchecked_transcript}")
-        
-#         # Add additional logging for debugging
-#         if not spellchecked_transcript:
-#             logging.error("Spellcheck did not produce the expected output.")
-        
-#         return (
-#             spellchecked_transcript,
-#             upload_json("spellchecked_transcript", spellchecked_transcript, CONFIG),
-#         )
-#     except Exception as e:
-#         logging.error(f"Error during spellcheck: {str(e)}")
-#         raise
+
 
 def do_nlp(CONFIG: Config, spellchecked_transcript: dict) -> dict:
     nlp, nlp_time_taken = nlp_spacy(

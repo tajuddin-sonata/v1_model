@@ -7,7 +7,6 @@ from pathlib import Path
 from uuid import uuid1
 import functions_framework
 from flask import Request, abort, g
-# from google.cloud import storage
 from flask_expects_json import expects_json
 from os import environ
 
@@ -21,6 +20,9 @@ from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPerm
 from azure.functions import HttpRequest, HttpResponse
 import azure.functions as func
 from azure.core.exceptions import ResourceNotFoundError
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+from werkzeug.exceptions import InternalServerError, BadRequest, NotFound
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 
@@ -50,8 +52,6 @@ from tempfile import TemporaryDirectory
 ### Instance-wide storage Vars
 instance_id = str(uuid1())
 run_counter = 0
-
-# storage_client = storage.Client()
 
 connection_string = os.environ['StorageAccountConnectionString']
 storage_client = BlobServiceClient.from_connection_string(connection_string)
@@ -102,20 +102,20 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     # - MKA (compressed audio)
     # - Video
 
-    ##### check and Installing ffmpeg package #######
+    ##### check and Install ffmpeg package #######
     try:
-        # Check if FFmpeg is already installed
+        ## Check if FFmpeg is already installed
         check_ffmpeg_installed = "ffmpeg -version"
         subprocess.run(check_ffmpeg_installed, shell=True, check=True)
         logging.info("FFmpeg is already installed.")
     except subprocess.CalledProcessError:
-        # If FFmpeg is not installed, attempt to install it
+        ## If FFmpeg is not installed, attempt to install it
         install_command = "apt-get install -y ffmpeg || yum install -y ffmpeg"
         try:
             subprocess.run(install_command, shell=True, check=True)
             logging.info("FFmpeg installed successfully.")
         except subprocess.CalledProcessError as e:
-            # Log the exception details
+            ## Log the exception details
             logging.exception("Error installing FFmpeg: %s", e)
 
     ### Get Staging Bucket
@@ -134,25 +134,18 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     try:
         ### Try to fetch blob properties with the condition that the ETag must match the desired_etag
         nlp_etag_value = nlp_blob.get_blob_properties(if_match=CONFIG.input_files.nlp.version)
-        logging.info(f'Audio Blob Name: {nlp_blob.blob_name}')
-        logging.info(f'Blob ETag: {nlp_etag_value["etag"]}')
+        logging.info(f'nlp Blob Name: {nlp_blob.blob_name}')
+        logging.info(f'nlp Blob ETag: {nlp_etag_value["etag"]}')
 
         transcript_etag_value = transcript_blob.get_blob_properties(if_match=CONFIG.input_files.transcript.version)
-        logging.info(f'Audio Blob Name: {transcript_blob.blob_name}')
-        logging.info(f'Blob ETag: {transcript_etag_value["etag"]}')
+        logging.info(f'Transcript Blob Name: {transcript_blob.blob_name}')
+        logging.info(f'Transcript Blob ETag: {transcript_etag_value["etag"]}')
 
     except ResourceNotFoundError:
         ### Handle the case where the blob with the specified ETag is not found
         abort(404, "nlp or transcript input_files not found on buckets")
 
-    ### if (not nlp_blob) or (not transcript_blob):
-    #     abort(404, "nlp or transcript input_files not found on buckets")
-
     ###### MAIN ######
-
-    ### Download NLP + Transcript
-    # nlp_bytes = loads(nlp_blob.download_as_bytes())
-    # transcript_bytes = loads(transcript_blob.download_as_bytes())
 
     #### Download NLP + Transcript
     nlp_bytes = loads(nlp_blob.download_blob().readall())
@@ -245,7 +238,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         ### Try to fetch blob properties with the condition that the ETag must match the desired_etag
             media_etag_value = media_blob.get_blob_properties(if_match=media_file.version)
             logging.info(f'Media Blob Name: {media_blob.blob_name}')
-            logging.info(f'Blob ETag: {media_etag_value["etag"]}')
+            logging.info(f'Media Blob ETag: {media_etag_value["etag"]}')
 
         except ResourceNotFoundError:
             # Handle the case where the blob with the specified ETag is not found
@@ -254,16 +247,6 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         ### if not media_blob:
         #     abort(404, "{} input_file not found on bucket".format(media_type))
             
-        # # Generate Signed URL
-        # media_signed_url = media_blob.generate_signed_url(
-        #     version="v4",
-        #     expiration=(timedelta(hours=12)),
-        #     generation=media_blob.generation,
-        #     credentials=impersonate_account(
-        #         CONFIG.function_config.signing_account, 3600
-        #     ),
-        # )
-
         ### If blob exists, Generate Shared Access Signature (SAS) Token
         sas_token = generate_blob_sas(
                 account_name=storage_client.account_name,

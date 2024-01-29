@@ -10,31 +10,31 @@ from traceback import format_exc
 # from google.cloud import storage
 from util_input_validation import Config
 
-# # #Libraries for Azure
+###Libraries for Azure
 import os
 import time
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from azure.storage.blob import BlobServiceClient, BlobClient
+from datetime import datetime, timedelta
+import azure.functions as func
 
+
+def impersonate_account(signing_account: str, lifetime: int):
+    impersonated_credential = ManagedIdentityCredential(
+        client_id=signing_account,
+        lifetime=lifetime,
+    )
+    return impersonated_credential
 
 # def impersonate_account(signing_account: str, lifetime: int):
-#     credentials, project = default()
-#     return impersonated_credentials.Credentials(
-#         source_credentials=credentials,
-#         target_principal=signing_account,
-#         target_scopes="https://www.googleapis.com/auth/devstorage.read_write",
-#         lifetime=lifetime,
-#     )
-
-def impersonate_account(signing_account: str, target_scopes, lifetime):
-    credential = DefaultAzureCredential()
-    token_credential = credential.get_token(target_scopes)
-    impersonated_credential={
-        "token": token_credential.token,
-        "expires_on_utc": token_credential.expires_on,
-        "expires_in_seconds": token_credential.expires_on.timestamp() - time.time()
-    }
-    return impersonated_credential
+#     credential = DefaultAzureCredential()
+#     target_scopes = "https://storage.azure.com/.default"
+#     token_credential = credential.get_token(target_scopes)
+#     lifetime = lifetime
+#     impersonated_credential = {
+#         "token": token_credential.token,
+#     }
+#     return impersonated_credential
 
 def create_outgoing_file_ref(file: Union[BlobClient, Config.InputFiles.InputFile]):
     if isinstance(file, BlobClient):
@@ -61,64 +61,122 @@ def create_outgoing_file_ref(file: Union[BlobClient, Config.InputFiles.InputFile
         return {}
 
 
-@functions_framework.errorhandler(InternalServerError)
-def handle_exception(e):
+# @functions_framework.errorhandler(InternalServerError)
+# def handle_exception(e):
+#     """Return JSON instead of HTML for HTTP errors."""
+#     request_json = request.get_json()
+#     context_json = g.context
+#     msg = {
+#         "code": e.code,
+#         "name": e.name,
+#         "description": e.description,
+#         "trace": format_exc(),
+#     }
+#     logging.error(dumps({**msg, "context": context_json, "request": request_json}))
+#     response = e.get_response()
+#     response.data = dumps(msg)
+#     response.content_type = "application/json"
+#     return response
+
+
+# @functions_framework.errorhandler(NotFound)
+# def handle_not_found(e):
+#     request_json = request.get_json()
+#     context_json = g.context
+#     msg = {"code": e.code, "name": e.name, "description": e.description}
+#     logging.error(dumps({**msg, "context": context_json, "request": request_json}))
+#     response = e.get_response()
+#     response.data = dumps(msg)
+#     response.content_type = "application/json"
+#     return response
+
+
+# @functions_framework.errorhandler(BadRequest)
+# def handle_bad_request(e):
+#     msg = {
+#         "code": e.code,
+#         "name": e.name,
+#         "description": e.description,
+#     }
+#     try:
+#         request_json = request.get_json()
+#         context_json = request_json.pop("context")
+#         if isinstance(e.description, ValidationError):
+#             original_error = e.description
+#             msg = {
+#                 **msg,
+#                 "name": "Validation Error",
+#                 "description": original_error.message,
+#                 "trace": original_error.__str__(),
+#             }
+#         else:
+#             msg = {**msg, "trace": format_exc()}
+#         logging.warning(
+#             dumps({**msg, "context": context_json, "request": request_json})
+#         )
+#     except:
+#         request_json = request.data
+#         msg = {**msg, "trace": format_exc()}
+#         logging.warning(dumps({**msg, "request": str(request_json, "utf-8")}))
+#     response = e.get_response()
+#     response.data = dumps(msg)
+#     response.content_type = "application/json"
+#     return response
+
+
+def handle_exception(req: func.HttpRequest, e) -> func.HttpResponse:
     """Return JSON instead of HTML for HTTP errors."""
-    request_json = request.get_json()
-    context_json = g.context
+
+    request_json = req.get_json()
+    context_json = request_json
+    logging.info(f'Input Request Received: {context_json}')
+
     msg = {
-        "code": e.code,
-        "name": e.name,
-        "description": e.description,
+        "status": "error", 
+        "code": 500,  # InternalServerError 
+        "name": "Internal Server Error",
+        "description": str(e),  
         "trace": format_exc(),
     }
     logging.error(dumps({**msg, "context": context_json, "request": request_json}))
-    response = e.get_response()
-    response.data = dumps(msg)
-    response.content_type = "application/json"
-    return response
+    return func.HttpResponse(body=dumps(msg), status_code=500, mimetype='application/json')
 
+def handle_not_found(req: func.HttpRequest, e) -> func.HttpResponse:
+    
+    request_json = req.get_json()
+    context_json = request_json
+    logging.info(f'Received request: {context_json}')
 
-@functions_framework.errorhandler(NotFound)
-def handle_not_found(e):
-    request_json = request.get_json()
-    context_json = g.context
-    msg = {"code": e.code, "name": e.name, "description": e.description}
-    logging.error(dumps({**msg, "context": context_json, "request": request_json}))
-    response = e.get_response()
-    response.data = dumps(msg)
-    response.content_type = "application/json"
-    return response
-
-
-@functions_framework.errorhandler(BadRequest)
-def handle_bad_request(e):
     msg = {
-        "code": e.code,
-        "name": e.name,
-        "description": e.description,
+        "code": 404,  # NotFound 
+        "name": "Not Found",
+        "description": str(e),  
+    }
+    logging.error(dumps({**msg, "context": context_json, "request": request_json}))
+    return func.HttpResponse(body=dumps(msg), status_code=404, mimetype='application/json')
+
+
+def handle_bad_request(req: func.HttpRequest, e: Exception) -> func.HttpResponse:
+    msg = {
+        "code": 400,  # BadRequest 
+        "name": "Bad Request",
+        "description": str(e),  
     }
     try:
-        request_json = request.get_json()
+        request_json = req.get_json()
         context_json = request_json.pop("context")
-        if isinstance(e.description, ValidationError):
-            original_error = e.description
-            msg = {
-                **msg,
+        if isinstance(e, ValidationError):  
+            original_error = e
+            msg.update({
                 "name": "Validation Error",
                 "description": original_error.message,
-                "trace": original_error.__str__(),
-            }
+                "trace": str(original_error),
+            }) 
         else:
-            msg = {**msg, "trace": format_exc()}
-        logging.warning(
-            dumps({**msg, "context": context_json, "request": request_json})
-        )
-    except:
-        request_json = request.data
-        msg = {**msg, "trace": format_exc()}
-        logging.warning(dumps({**msg, "request": str(request_json, "utf-8")}))
-    response = e.get_response()
-    response.data = dumps(msg)
-    response.content_type = "application/json"
-    return response
+            msg.update({"trace": format_exc()})
+        logging.warning(dumps({**msg, "context": context_json, "request": request_json}))
+    except Exception as ex:
+        request_json = req.get_body().decode('utf-8')
+        msg.update({"trace": format_exc(), "request": str(request_json)})
+        logging.warning(dumps(msg))
+    return func.HttpResponse(body=dumps(msg), status_code=400, mimetype='application/json')

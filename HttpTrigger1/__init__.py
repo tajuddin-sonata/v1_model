@@ -19,7 +19,7 @@ import logging
 import azure.functions as func
 from azure.storage.blob import BlobServiceClient
 from azure.functions import HttpRequest, HttpResponse
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 
 # sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
@@ -39,7 +39,7 @@ storage_client = BlobServiceClient.from_connection_string(connection_string)
 time_cold_start = time() - start_time
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Python HTTP trigger function processed a request.')
+    logging.info('HTTP trigger function processed a request.')
 
 
     """HTTP Cloud Function.
@@ -191,8 +191,7 @@ def find_client_buckets(
     staging = None
     content = None
     buckets = storage_client.list_containers(name_starts_with=bucket_prefix, include_metadata=True)
-    # container_name = [container.name for container in containers]
-    # container_properties = storage_client.get_container_client(container_name).get_container_properties()
+
     for bucket in [
         bucket
         for bucket in buckets

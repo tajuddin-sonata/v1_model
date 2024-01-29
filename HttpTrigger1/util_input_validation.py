@@ -69,6 +69,7 @@ from datetime import datetime
 from typing import Any
 from ciso8601 import parse_datetime
 from json import dumps, loads
+from jsonschema import validate, ValidationError
 
 
 def jsonify(obj):
@@ -96,7 +97,15 @@ class Jsonable(object):
     def items(self):
         return self.__dict__.items()
     
-
+# class Config(Jsonable):
+#     def __init__(self, req):
+#         try:
+#             validate(req, schema)  # Validate against the defined schema
+#             self.context = self.Context(req["context"])
+#             self.input_files = self.InputFiles(req["input_files"]) if "input_files" in req else None
+#             self.function_config = self.FunctionConfig(req["function_config"])
+#         except ValidationError as e:
+#             raise ValueError(f"Invalid request format: {e}")
 
 class Config(Jsonable):
     def __init__(self, req):

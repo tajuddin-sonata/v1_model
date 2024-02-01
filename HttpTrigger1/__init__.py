@@ -21,6 +21,9 @@ from azure.storage.blob import BlobServiceClient
 from azure.functions import HttpRequest, HttpResponse
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 
+from rpds import HashTrieMap, HashTrieSet, List
+
+
 # sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), ".")))
 from util_input_validation import schema, Config

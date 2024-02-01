@@ -9,4 +9,5 @@ functions-framework==3.*
 flask-expects-json
 python-dotenv
 ciso8601
+rpds
 rpds-py

@@ -34,29 +34,30 @@ def impersonate_account(signing_account: str, lifetime: int):
 #     }
 #     return impersonated_credential
 
-# def create_outgoing_file_ref(file: Union[BlobClient, Config.InputFiles.InputFile]):
-#     if isinstance(file, BlobClient):
-#         container_name = file.container_name
-#         blob_properties = file.get_blob_properties()
-#         return {
-#             "bucket_name": str(container_name),
-#             "full_path": str(file.blob_name),
-#             "version": str(blob_properties.etag),
-#             "size": str(blob_properties.size),
-#             "content_type": str(blob_properties.content_settings.content_type),
-#             "uploaded": str(blob_properties.last_modified) if blob_properties.last_modified else None,
-#         }
-#     elif isinstance(file, Config.InputFiles.InputFile):
-#         return {
-#             "bucket_name": str(file.bucket_name),
-#             "full_path": str(file.full_path),
-#             "version": str(file.version),
-#             "size": str(file.size),
-#             "content_type": str(file.content_type),
-#             "uploaded": str(file.uploaded.isoformat()) if file.uploaded else None,
-#         }
-#     else:
-#         return {}
+def create_outgoing_file_ref(file: Union[BlobClient, Config.InputFiles.InputFile]):
+    if isinstance(file, BlobClient):
+        container_name = file.container_name
+        blob_properties = file.get_blob_properties()
+        return {
+            "bucket_name": str(container_name),
+            "full_path": str(file.blob_name),
+            "version": str(blob_properties.etag),
+            "size": str(blob_properties.size),
+            "content_type": str(blob_properties.content_settings.content_type),
+            "uploaded": str(blob_properties.last_modified) if blob_properties.last_modified else None,
+        }
+    elif isinstance(file, Config.InputFiles.InputFile):
+        return {
+            "bucket_name": str(file.bucket_name),
+            "full_path": str(file.full_path),
+            "version": str(file.version),
+            "size": str(file.size),
+            "content_type": str(file.content_type),
+            "uploaded": str(file.uploaded.isoformat()) if file.uploaded else None,
+        }
+    else:
+        return {}
+
 
 
 # @functions_framework.errorhandler(InternalServerError)
